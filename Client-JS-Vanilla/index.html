@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <style></style>
+  <body>
+    <h2>WebSocket/Push Notifications</h2>
+    <button id="send-notification" style="display: block">
+      Send Notification
+    </button>
+    <button id="connect-websocket" style="display: block">
+      Connect Websocket
+    </button>
+    <button id="disconnect-websocket" style="display: block">
+      Disconnect Websocket
+    </button>
+    <p
+      id="alert-notifications-permission-granted"
+      style="color: green; display: none"
+    >
+      Notificacoes Liberadas
+    </p>
+    <p
+      id="alert-notifications-permission-denied"
+      style="color: red; display: none"
+    >
+      Notificacoes Bloqueadas
+    </p>
+  </body>
+  <script>
+    //Configurações para funcionar com click em botão
+
+    const buttonSendNotification = document.getElementById("send-notification");
+    buttonSendNotification.addEventListener("click", sendNotification);
+
+    function sendNotification(message) {
+      if (!("Notification" in window)) {
+        alert("This browser does not support desktop notification");
+      } else if (Notification.permission === "granted") {
+        const response = JSON.parse(message.data);
+        console.log(response);
+        const notification = new Notification(`Olá ${response.User}!`, {
+          body: `Você tem ${response.Autorizacoes.length} autorizações pendentes`,
+        });
+
+        notification.onclick = (event) => {
+          event.preventDefault(); // prevent the browser from focusing the Notification's tab
+          window.open("http://www.google.com", "_blank");
+        };
+      } else {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            const response = JSON.parse(message.data);
+            console.log(response);
+            const notification = new Notification(`Olá ${response.User}!`, {
+              body: `Você tem ${response.Autorizacoes.length} autorizações pendentes`,
+            });
+            notification.onclick = (event) => {
+              event.preventDefault(); // prevent the browser from focusing the Notification's tab
+              window.open("http://www.google.com", "_blank");
+            };
+          }
+        });
+      }
+    }
+
+    //Configurações para funcionar com websocket
+
+    const buttonConnectWebSocket = document.getElementById("connect-websocket");
+    buttonConnectWebSocket.addEventListener("click", initializeWebSocket);
+
+    const buttonDisconnectWebSocket = document.getElementById(
+      "disconnect-websocket"
+    );
+    buttonDisconnectWebSocket.addEventListener("click", stopWebSocket);
+
+    const socket = new WebSocket("ws://localhost:5264/ws?user=marina.dsn.erp");
+    // const socket = new WebSocket(
+    //   "ws://localhost:5264/ws?user=thiagopaes.dsn.erp"
+    // );
+
+    function initializeWebSocket() {
+      socket.onopen = () => {
+        console.log("WebSocket connection established.");
+      };
+
+      socket.onmessage = (event) => {
+        console.log("Message received:", event.data);
+        sendNotification(event);
+      };
+
+      socket.onclose = () => {
+        socket.close();
+        console.log("WebSocket connection closed.");
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+    }
+
+    function stopWebSocket() {
+      socket.onclose();
+    }
+
+    //Status das notificações no navegador
+
+    const alertNotificationsPermissionGranted = document.getElementById(
+      "alert-notifications-permission-granted"
+    );
+
+    const alertNotificationsPermissionDenied = document.getElementById(
+      "alert-notifications-permission-denied"
+    );
+
+    window.addEventListener("click", checkNotificationPermission);
+
+    async function checkNotificationPermission() {
+      if (Notification.permission === "denied") {
+        alertNotificationsPermissionGranted.style.display = "none";
+        alertNotificationsPermissionDenied.style.display = "block";
+      } else {
+        alertNotificationsPermissionGranted.style.display = "block";
+        alertNotificationsPermissionDenied.style.display = "none";
+      }
+    }
+  </script>
+</html>
